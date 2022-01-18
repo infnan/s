@@ -1,0 +1,33 @@
+#!/bin/bash
+dd if=/dev/zero of=/var/swap bs=1M count=1024
+chmod 600 /var/swap
+mkswap /var/swap
+swapon /var/swap
+echo "/var/swap swap swap defaults 0 0" >> /etc/fstab
+
+apt update
+apt upgrade -y
+apt install -y nginx socat net-tools vim telnet less wget
+apt autoremove
+
+rm /etc/nginx/sites-enabled/default
+cat > /etc/nginx/modules-enabled/99-ladder.conf <<EOF
+stream {
+    server {
+        listen 80;
+        proxy_pass plusnan.me:80;
+    }
+    server {
+        listen 443;
+        proxy_pass plusnan.me:443;
+    }
+}
+EOF
+
+systemctl restart nginx
+systemctl enable nginx
+
+echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
+echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
+echo "net.netfilter.nf_conntrack_max=1000000" >> /etc/sysctl.conf
+sysctl -p
